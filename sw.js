@@ -2,6 +2,7 @@ const CACHE_NAME = 'crossword-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
+  '/words.js'
   '/manifest.json',
   '/icon-192.png',
   '/icon-512.png'
@@ -46,15 +47,15 @@ self.addEventListener('fetch', (event) => {
             if (!response || response.status !== 200 || event.request.method !== 'GET') {
               return response;
             }
-            
+
             // Clone the response
             const responseToCache = response.clone();
-            
+
             caches.open(CACHE_NAME)
               .then((cache) => {
                 cache.put(event.request, responseToCache);
               });
-            
+
             return response;
           });
       })
