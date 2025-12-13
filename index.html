@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Crossword">
+    <meta name="theme-color" content="#0f172a">
+    
+    <title>Crossword</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        :root { --bg: #0f172a; --bg2: #1e293b; --bg3: #334155; --text: #f8fafc; --text2: #94a3b8; --accent: #3b82f6; --success: #22c55e; --error: #ef4444; }
+        html, body { height: 100%; overflow: hidden; touch-action: manipulation; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); }
+        .app { height: 100%; display: flex; flex-direction: column; padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
+        header { padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--bg3); flex-shrink: 0; }
+        .logo { font-size: 16px; font-weight: 700; letter-spacing: 1px; }
+        .stats { display: flex; gap: 12px; font-size: 12px; color: var(--text2); }
+        main { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 8px; min-height: 0; }
+        .clue-box { background: var(--bg2); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; flex-shrink: 0; }
+        .clue-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .clue-num { font-size: 11px; font-weight: 600; color: #60a5fa; text-transform: uppercase; }
+        .dir-btn { font-size: 10px; color: var(--text2); background: var(--bg3); padding: 3px 8px; border-radius: 12px; border: none; }
+        .clue-text { font-size: 14px; line-height: 1.3; }
+        .clue-kr { font-size: 12px; color: var(--text2); margin-top: 4px; display: none; }
+        .clue-kr.on { display: block; }
+        .grid-wrap { flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; min-height: 0; }
+        .grid { display: grid; gap: 2px; background: var(--bg3); padding: 2px; border-radius: 6px; }
+        .cell { background: #fff; position: relative; display: flex; align-items: center; justify-content: center; border-radius: 2px; user-select: none; }
+        .cell.black { background: var(--bg); }
+        .cell .n { position: absolute; top: 1px; left: 2px; font-size: 7px; font-weight: 600; color: #64748b; }
+        .cell .l { font-size: 14px; font-weight: 600; color: #1e293b; text-transform: uppercase; }
+        .cell.sel { background: #fef08a !important; box-shadow: inset 0 0 0 2px var(--accent); }
+        .cell.hl { background: #e0f2fe; }
+        .cell.ok { background: #dcfce7 !important; }
+        .cell.ok .l { color: var(--success); }
+        .cell.err { background: #fee2e2 !important; }
+        .cell.err .l { color: var(--error); }
+        .cell.locked { opacity: 0.8; }
+        .cell.locked::after { content: ''; position: absolute; inset: 0; background: rgba(34, 197, 94, 0.15); }
+        .controls { display: flex; gap: 6px; padding: 8px 0; flex-wrap: wrap; justify-content: center; flex-shrink: 0; }
+        .btn { padding: 8px 10px; border: none; border-radius: 6px; font-size: 12px; font-weight: 500; background: var(--bg2); color: var(--text); }
+        .btn:active { transform: scale(0.96); opacity: 0.8; }
+        .btn.pri { background: var(--accent); }
+        .btn.on { background: var(--success); }
+        .btn:disabled { opacity: 0.5; }
+        .keyboard { background: var(--bg2); padding: 6px 4px; padding-bottom: calc(6px + env(safe-area-inset-bottom)); flex-shrink: 0; }
+        .kb-row { display: flex; justify-content: center; gap: 4px; margin-bottom: 4px; }
+        .kb-row:last-child { margin-bottom: 0; }
+        .key { min-width: 28px; height: 40px; border: none; border-radius: 5px; background: var(--bg3); color: var(--text); font-size: 16px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex: 1; max-width: 36px; }
+        .key:active { background: var(--accent); }
+        .key.wide { min-width: 50px; max-width: 60px; font-size: 11px; }
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); opacity: 0; visibility: hidden; transition: all 0.3s; z-index: 100; }
+        .overlay.on { opacity: 1; visibility: visible; }
+        .panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(360px, 85vw); background: var(--bg); transform: translateX(100%); transition: transform 0.3s; z-index: 101; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top); }
+        .panel.on { transform: translateX(0); }
+        .panel-head { padding: 14px; border-bottom: 1px solid var(--bg3); display: flex; justify-content: space-between; align-items: center; }
+        .panel-head h2 { font-size: 16px; }
+        .close-btn { width: 32px; height: 32px; border: none; border-radius: 50%; background: var(--bg2); color: var(--text); font-size: 18px; }
+        .panel-body { flex: 1; overflow-y: auto; padding: 14px; }
+        .setting { display: flex; justify-content: space-between; align-items: center; padding: 10px; background: var(--bg2); border-radius: 8px; margin-bottom: 14px; }
+        .toggle { width: 44px; height: 26px; background: var(--bg3); border-radius: 13px; position: relative; }
+        .toggle.on { background: var(--success); }
+        .toggle::after { content: ''; position: absolute; width: 20px; height: 20px; background: white; border-radius: 50%; top: 3px; left: 3px; transition: 0.3s; }
+        .toggle.on::after { transform: translateX(18px); }
+        .section { margin-bottom: 20px; }
+        .section h3 { font-size: 11px; color: #60a5fa; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--bg3); }
+        .item { padding: 10px; background: var(--bg2); border-radius: 6px; margin-bottom: 6px; font-size: 13px; }
+        .item.act { background: var(--bg3); border-left: 3px solid var(--accent); }
+        .item .num { font-weight: 600; margin-right: 6px; }
+        .item .txt { color: var(--text2); }
+        .item .kr { display: block; font-size: 11px; color: var(--text2); margin-top: 3px; opacity: 0.7; }
+        .item .kr.hide { display: none; }
+        .toast { position: fixed; bottom: 200px; left: 50%; transform: translateX(-50%) translateY(20px); background: var(--bg3); padding: 10px 20px; border-radius: 20px; font-size: 13px; opacity: 0; visibility: hidden; transition: all 0.3s; z-index: 200; }
+        .toast.on { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+        .toast.ok { background: var(--success); }
+        .loading { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--text2); }
+        .spin { width: 36px; height: 36px; border: 3px solid var(--bg3); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @media (min-width: 768px) {
+            .app { max-width: 1100px; margin: 0 auto; padding-bottom: env(safe-area-inset-bottom); }
+            header { padding: 14px 20px; }
+            .logo { font-size: 20px; }
+            main { flex-direction: row; gap: 20px; padding: 16px; }
+            .game { flex: 1; display: flex; flex-direction: column; }
+            .keyboard { display: none !important; }
+            .desk-clues { width: 280px; background: var(--bg2); border-radius: 10px; padding: 14px; overflow-y: auto; }
+            .desk-clues h3 { font-size: 11px; color: #60a5fa; text-transform: uppercase; margin-bottom: 8px; }
+            .desk-clues .list { margin-bottom: 14px; }
+            .desk-clues .item { padding: 6px 8px; font-size: 12px; background: var(--bg3); margin-bottom: 3px; }
+            .desk-clues .item.act { background: var(--accent); color: white; }
+            .desk-clues .item.act .txt, .desk-clues .item.act .kr { color: rgba(255,255,255,0.9); }
+            .cell { width: 32px !important; height: 32px !important; }
+            .cell .l { font-size: 16px; }
+            .cell .n { font-size: 8px; }
+            .btn.mob { display: none; }
+            .clue-box { display: none; }
+            .toast { bottom: 100px; }
+        }
+        @media (max-width: 767px) { .desk-clues { display: none; } }
+        @media (max-width: 380px) { .cell .l { font-size: 12px; } .cell .n { font-size: 6px; } .key { height: 36px; font-size: 14px; } }
+    </style>
+</head>
+<body>
+    <div class="app" id="app">
+        <header>
+            <div class="logo">CROSSWORD</div>
+            <div class="stats">
+                <span>⏱ <span id="time">00:00</span></span>
+                <span>💡 <span id="hints">5</span></span>
+            </div>
+        </header>
+        <main id="main"><div class="loading"><div class="spin"></div><div>Generating...</div></div></main>
+    </div>
+    <div class="overlay" id="ov" onclick="hidePanel()"></div>
+    <div class="panel" id="pn">
+        <div class="panel-head"><h2>Clues</h2><button class="close-btn" onclick="hidePanel()">×</button></div>
+        <div class="panel-body">
+            <div class="setting"><span>한글 힌트</span><div class="toggle" id="tgl" onclick="toggleKr()"></div></div>
+            <div class="section"><h3>Across →</h3><div id="acr"></div></div>
+            <div class="section"><h3>Down ↓</h3><div id="dwn"></div></div>
+        </div>
+    </div>
+    <div class="toast" id="toast"></div>
+
+    <!-- 단어 파일을 별도로 로드 (words.js) -->
+    <script src="words.js"></script>
+    <script>
+        // 단어가 로드 안됐으면 기본 단어 사용
+        if (typeof WORDS === 'undefined') {
+            var WORDS = [
+                {word:"CAT",clue:"Feline pet",kr:"고양잇과 애완동물"},{word:"DOG",clue:"Man's best friend",kr:"인간의 가장 친한 친구"},
+                {word:"SUN",clue:"Center of solar system",kr:"태양계의 중심"},{word:"RUN",clue:"Move quickly on foot",kr:"발로 빠르게 이동"},
+                {word:"BOOK",clue:"Reading material",kr:"읽을거리"},{word:"FISH",clue:"Aquatic animal",kr:"수중 동물"},
+                {word:"MOON",clue:"Earth's satellite",kr:"지구의 위성"},{word:"STAR",clue:"Celestial body",kr:"천체"},
+                {word:"TREE",clue:"Tall plant",kr:"키가 큰 식물"},{word:"BIRD",clue:"Feathered creature",kr:"깃털 달린 생물"},
+                {word:"RAIN",clue:"Water from clouds",kr:"구름에서 내리는 물"},{word:"FIRE",clue:"Burning flames",kr:"타오르는 불꽃"},
+                {word:"GOLD",clue:"Precious metal",kr:"귀중한 금속"},{word:"BLUE",clue:"Color of sky",kr:"하늘의 색깔"},
+                {word:"KING",clue:"Royal ruler",kr:"왕족 통치자"},{word:"SHIP",clue:"Ocean vessel",kr:"바다를 다니는 배"},
+                {word:"LOVE",clue:"Deep affection",kr:"깊은 애정"},{word:"HOPE",clue:"Optimistic feeling",kr:"낙관적인 감정"},
+                {word:"DESK",clue:"Work surface",kr:"작업하는 표면"},{word:"LAMP",clue:"Light source",kr:"빛을 내는 기구"},
+                {word:"DOOR",clue:"Room entrance",kr:"방의 입구"},{word:"WALL",clue:"Room divider",kr:"방을 나누는 것"},
+                {word:"CAKE",clue:"Birthday dessert",kr:"생일 디저트"},{word:"MILK",clue:"Dairy drink",kr:"유제품 음료"},
+                {word:"APPLE",clue:"Red or green fruit",kr:"빨간색 또는 녹색 과일"},{word:"BEACH",clue:"Sandy shore",kr:"모래가 있는 해안"},
+                {word:"CHAIR",clue:"Sitting furniture",kr:"앉는 가구"},{word:"DANCE",clue:"Rhythmic movement",kr:"리듬에 맞춘 움직임"},
+                {word:"EARTH",clue:"Our planet",kr:"우리 행성"},{word:"HORSE",clue:"Riding animal",kr:"타는 동물"},
+                {word:"JUICE",clue:"Fruit drink",kr:"과일 음료"},{word:"KNIFE",clue:"Cutting tool",kr:"자르는 도구"},
+                {word:"LEMON",clue:"Sour citrus",kr:"신맛 감귤류"},{word:"MONEY",clue:"Currency",kr:"화폐"},
+                {word:"NIGHT",clue:"Dark hours",kr:"어두운 시간"},{word:"OCEAN",clue:"Large body of salt water",kr:"큰 바닷물 수역"},
+                {word:"PAINT",clue:"Coloring substance",kr:"색칠하는 물질"},{word:"QUEEN",clue:"Female monarch",kr:"여성 군주"},
+                {word:"RIVER",clue:"Flowing water body",kr:"흐르는 물줄기"},{word:"STORM",clue:"Severe weather",kr:"심한 날씨"},
+                {word:"TABLE",clue:"Dining furniture",kr:"식사용 가구"},{word:"WATER",clue:"H2O",kr:"H2O"},
+                {word:"WORLD",clue:"The Earth",kr:"지구 전체"},{word:"BRAIN",clue:"Thinking organ",kr:"생각하는 기관"},
+                {word:"BREAD",clue:"Baked staple food",kr:"구운 주식"},{word:"CANDY",clue:"Sweet treat",kr:"달콤한 간식"},
+                {word:"CHILD",clue:"Young person",kr:"어린 사람"},{word:"CLOCK",clue:"Time device",kr:"시간 장치"},
+                {word:"CLOUD",clue:"Sky formation",kr:"하늘의 형성물"},{word:"DREAM",clue:"Sleep vision",kr:"수면 중 환상"},
+                {word:"ANIMAL",clue:"Living creature",kr:"살아있는 생물"},{word:"BANANA",clue:"Yellow fruit",kr:"노란 과일"},
+                {word:"CAMERA",clue:"Photo device",kr:"사진 장치"},{word:"CASTLE",clue:"Royal fortress",kr:"왕족 요새"},
+                {word:"COFFEE",clue:"Morning beverage",kr:"아침 음료"},{word:"DOCTOR",clue:"Medical professional",kr:"의료 전문가"},
+                {word:"DRAGON",clue:"Mythical beast",kr:"신화 속 짐승"},{word:"FAMILY",clue:"Related group",kr:"관계된 집단"},
+                {word:"FLOWER",clue:"Plant bloom",kr:"식물의 꽃"},{word:"FOREST",clue:"Tree-filled area",kr:"나무로 가득한 지역"},
+                {word:"FRIEND",clue:"Close companion",kr:"가까운 동반자"},{word:"GARDEN",clue:"Plant growing area",kr:"식물 재배 구역"},
+                {word:"GUITAR",clue:"String instrument",kr:"현악기"},{word:"ISLAND",clue:"Water-surrounded land",kr:"물에 둘러싸인 땅"},
+                {word:"JUNGLE",clue:"Tropical forest",kr:"열대 우림"},{word:"KITTEN",clue:"Baby cat",kr:"아기 고양이"},
+                {word:"LETTER",clue:"Written message",kr:"쓴 메시지"},{word:"MARKET",clue:"Shopping place",kr:"쇼핑 장소"},
+                {word:"MONKEY",clue:"Primate",kr:"영장류"},{word:"MOTHER",clue:"Female parent",kr:"여성 부모"},
+                {word:"MUSEUM",clue:"Art building",kr:"예술 건물"},{word:"NATURE",clue:"Natural world",kr:"자연 세계"},
+                {word:"ORANGE",clue:"Citrus fruit",kr:"감귤류 과일"},{word:"RABBIT",clue:"Hopping animal",kr:"뛰어다니는 동물"},
+                {word:"SCHOOL",clue:"Learning place",kr:"배우는 장소"},{word:"SUMMER",clue:"Hot season",kr:"더운 계절"},
+                {word:"WINDOW",clue:"Wall opening",kr:"벽의 개구부"},{word:"WINTER",clue:"Cold season",kr:"추운 계절"},
+                {word:"AIRPORT",clue:"Plane terminal",kr:"비행기 터미널"},{word:"BROTHER",clue:"Male sibling",kr:"남성 형제자매"},
+                {word:"CAPTAIN",clue:"Ship leader",kr:"배의 지도자"},{word:"CHICKEN",clue:"Farm bird",kr:"농장 조류"},
+                {word:"COUNTRY",clue:"Nation",kr:"국가"},{word:"DIAMOND",clue:"Precious gem",kr:"귀중한 보석"},
+                {word:"DOLPHIN",clue:"Smart sea mammal",kr:"똑똑한 바다 포유류"},{word:"EVENING",clue:"Late afternoon",kr:"늦은 오후"},
+                {word:"FACTORY",clue:"Manufacturing place",kr:"제조 장소"},{word:"FREEDOM",clue:"Liberty",kr:"자유로움"},
+                {word:"HISTORY",clue:"Past events",kr:"과거 사건들"},{word:"KITCHEN",clue:"Cooking room",kr:"요리하는 방"},
+                {word:"LIBRARY",clue:"Book building",kr:"책 건물"},{word:"MACHINE",clue:"Mechanical device",kr:"기계 장치"},
+                {word:"MORNING",clue:"Early day",kr:"이른 낮"},{word:"MYSTERY",clue:"Unsolved puzzle",kr:"풀리지 않은 퍼즐"},
+                {word:"PICTURE",clue:"Image",kr:"이미지"},{word:"RAINBOW",clue:"Colorful arc",kr:"다채로운 호"},
+                {word:"SCIENCE",clue:"Knowledge field",kr:"지식 분야"},{word:"STUDENT",clue:"Learner",kr:"배우는 사람"},
+                {word:"TEACHER",clue:"Educator",kr:"교육자"},{word:"WEATHER",clue:"Climate conditions",kr:"기후 상태"},
+                {word:"WEEKEND",clue:"Saturday and Sunday",kr:"토요일과 일요일"}
+            ];
+        }
+
+        let SIZE = 11, grid = [], user = [], placed = [], cur = null, dir = 'across';
+        let tmr = null, sec = 0, hnt = 5, krOn = false, locked = [];
+        let desk = window.innerWidth >= 768;
+
+        function init() {
+            gen();
+            regSW();
+            setupKeyboard();
+            window.addEventListener('resize', () => {
+                const was = desk;
+                desk = window.innerWidth >= 768;
+                if (was !== desk && grid.length) render();
+            });
+        }
+
+        function regSW() { if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {}); }
+
+        function setupKeyboard() {
+            document.addEventListener('keydown', e => {
+                if (!desk) return;
+                if (e.key === 'Enter') { e.preventDefault(); chk(); return; }
+                if (e.key === 'Tab') { e.preventDefault(); togDir(); return; }
+                if (e.key.length === 1 && e.key.match(/[a-zA-Z]/) && cur && !isLocked(cur.r, cur.c)) {
+                    e.preventDefault();
+                    setLetter(cur.r, cur.c, e.key.toUpperCase());
+                    nextUnfilled();
+                } else if (e.key === 'Backspace' && cur) {
+                    e.preventDefault();
+                    if (user[cur.r][cur.c] && !isLocked(cur.r, cur.c)) setLetter(cur.r, cur.c, '');
+                    else { prevUnlocked(); if (cur && !isLocked(cur.r, cur.c)) setLetter(cur.r, cur.c, ''); }
+                } else if (e.key === 'ArrowUp') { e.preventDefault(); moveBy(-1, 0); }
+                else if (e.key === 'ArrowDown') { e.preventDefault(); moveBy(1, 0); }
+                else if (e.key === 'ArrowLeft') { e.preventDefault(); moveBy(0, -1); }
+                else if (e.key === 'ArrowRight') { e.preventDefault(); moveBy(0, 1); }
+            });
+        }
+
+        function isLocked(r, c) { return locked.some(l => l.r === r && l.c === c); }
+
+        function gen() {
+            showLoad();
+            hnt = 5;
+            locked = [];
+            setTimeout(() => {
+                let best = null, bp = [];
+                for (let i = 0; i < 5; i++) {
+                    const r = mkGrid();
+                    if (r.p.length > bp.length) { best = r.g; bp = r.p; }
+                }
+                grid = best; placed = bp;
+                user = Array(SIZE).fill(null).map(() => Array(SIZE).fill(''));
+                assignNum();
+                render();
+                sec = 0;
+                startTmr();
+            }, 100);
+        }
+
+        function mkGrid() {
+            const g = Array(SIZE).fill(null).map(() => Array(SIZE).fill(null)), p = [];
+            const sh = [...WORDS].sort(() => Math.random() - 0.5).sort((a, b) => b.word.length - a.word.length);
+            const f = sh.find(w => w.word.length <= SIZE - 2);
+            if (f) {
+                const r = Math.floor(SIZE / 2), c = Math.floor((SIZE - f.word.length) / 2);
+                for (let i = 0; i < f.word.length; i++) g[r][c + i] = f.word[i];
+                p.push({ ...f, row: r, col: c, dir: 'across' });
+            }
+            let att = 0;
+            while (att < 500 && p.length < 15) {
+                att++;
+                const w = sh[Math.floor(Math.random() * sh.length)];
+                if (p.some(x => x.word === w.word) || w.word.length > SIZE - 2) continue;
+                const pl = findPl(g, w.word, p);
+                if (pl) {
+                    for (let i = 0; i < w.word.length; i++) {
+                        if (pl.dir === 'across') g[pl.row][pl.col + i] = w.word[i];
+                        else g[pl.row + i][pl.col] = w.word[i];
+                    }
+                    p.push({ ...w, ...pl });
+                }
+            }
+            return { g, p };
+        }
+
+        function findPl(g, word, p) {
+            const opts = [];
+            for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+                if (!g[r][c]) continue;
+                for (let i = 0; i < word.length; i++) {
+                    if (word[i] !== g[r][c]) continue;
+                    if (canPl(g, word, r, c - i, 'across', p)) opts.push({ row: r, col: c - i, dir: 'across' });
+                    if (canPl(g, word, r - i, c, 'down', p)) opts.push({ row: r - i, col: c, dir: 'down' });
+                }
+            }
+            return opts.length ? opts[Math.floor(Math.random() * opts.length)] : null;
+        }
+
+        function canPl(g, word, sr, sc, d, p) {
+            const len = word.length;
+            if (sr < 0 || sc < 0) return false;
+            if (d === 'across' && sc + len > SIZE) return false;
+            if (d === 'down' && sr + len > SIZE) return false;
+            if (d === 'across') { if (sc > 0 && g[sr][sc - 1]) return false; if (sc + len < SIZE && g[sr][sc + len]) return false; }
+            else { if (sr > 0 && g[sr - 1][sc]) return false; if (sr + len < SIZE && g[sr + len][sc]) return false; }
+            let ints = 0;
+            for (let i = 0; i < len; i++) {
+                const r = d === 'across' ? sr : sr + i, c = d === 'across' ? sc + i : sc, ex = g[r][c];
+                if (ex) { if (ex !== word[i]) return false; ints++; }
+                else {
+                    if (d === 'across') { if (r > 0 && g[r - 1][c]) return false; if (r < SIZE - 1 && g[r + 1][c]) return false; }
+                    else { if (c > 0 && g[r][c - 1]) return false; if (c < SIZE - 1 && g[r][c + 1]) return false; }
+                }
+            }
+            return p.length === 0 || ints > 0;
+        }
+
+        function assignNum() {
+            placed.sort((a, b) => a.row !== b.row ? a.row - b.row : a.col - b.col);
+            let n = 1; const m = {};
+            placed.forEach(w => { const k = `${w.row}-${w.col}`; if (!m[k]) m[k] = n++; w.num = m[k]; });
+        }
+
+        function showLoad() { document.getElementById('main').innerHTML = '<div class="loading"><div class="spin"></div><div>Generating...</div></div>'; }
+
+        function render() {
+            // 기존 키보드 제거 (중복 방지)
+            const oldKb = document.querySelector('.keyboard');
+            if (oldKb) oldKb.remove();
+
+            const cs = desk ? 32 : Math.min(28, Math.floor((window.innerWidth - 32) / SIZE));
+            const nm = {};
+            placed.forEach(w => { const k = `${w.row}-${w.col}`; if (!nm[k]) nm[k] = w.num; });
+
+            let gh = '';
+            for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) {
+                const bl = !grid[r][c], n = nm[`${r}-${c}`], lk = isLocked(r, c);
+                gh += `<div class="cell ${bl ? 'black' : ''} ${lk ? 'locked ok' : ''}" data-r="${r}" data-c="${c}" style="width:${cs}px;height:${cs}px">${n ? `<span class="n">${n}</span>` : ''}${!bl ? `<span class="l" id="l-${r}-${c}">${user[r][c]}</span>` : ''}</div>`;
+            }
+
+            const html = `
+                <div class="game">
+                    <div class="clue-box">
+                        <div class="clue-head">
+                            <span class="clue-num" id="cn">Select a cell</span>
+                            <button class="dir-btn" onclick="togDir()">${dir === 'across' ? '→ Across' : '↓ Down'}</button>
+                        </div>
+                        <div class="clue-text" id="ct"></div>
+                        <div class="clue-kr ${krOn ? 'on' : ''}" id="ck"></div>
+                    </div>
+                    <div class="grid-wrap">
+                        <div class="grid" id="grid" style="grid-template-columns:repeat(${SIZE},${cs}px)">${gh}</div>
+                    </div>
+                    <div class="controls">
+                        <button class="btn pri" onclick="gen()">New</button>
+                        <button class="btn" onclick="hint()" id="hb">💡</button>
+                        <button class="btn" onclick="chk()">Check</button>
+                        <button class="btn" onclick="rev()">Reveal</button>
+                        <button class="btn ${krOn ? 'on' : ''}" onclick="togKrQ()" id="kb-btn">🇰🇷</button>
+                        <button class="btn mob" onclick="showPanel()">Clues</button>
+                    </div>
+                </div>
+                ${desk ? `<div class="desk-clues"><div class="setting"><span>한글 힌트</span><div class="toggle ${krOn ? 'on' : ''}" onclick="togKrQ()"></div></div><h3>Across →</h3><div class="list" id="da"></div><h3>Down ↓</h3><div class="list" id="dd"></div></div>` : ''}
+            `;
+
+            document.getElementById('main').innerHTML = html;
+            
+            // 모바일 키보드 추가 (데스크톱 아닐 때만)
+            if (!desk) {
+                const kbHtml = `<div class="keyboard">
+                    <div class="kb-row">${['Q','W','E','R','T','Y','U','I','O','P'].map(k => `<button class="key" data-key="${k}">${k}</button>`).join('')}</div>
+                    <div class="kb-row">${['A','S','D','F','G','H','J','K','L'].map(k => `<button class="key" data-key="${k}">${k}</button>`).join('')}</div>
+                    <div class="kb-row"><button class="key wide" data-key="DIR">↔️</button>${['Z','X','C','V','B','N','M'].map(k => `<button class="key" data-key="${k}">${k}</button>`).join('')}<button class="key wide" data-key="DEL">⌫</button></div>
+                    <div class="kb-row"><button class="key wide" data-key="ENTER">ENTER ✓</button></div>
+                </div>`;
+                document.getElementById('app').insertAdjacentHTML('beforeend', kbHtml);
+                setupMobileKeyboard();
+            }
+
+            document.querySelectorAll('.cell:not(.black)').forEach(cell => {
+                cell.addEventListener('click', () => {
+                    const r = parseInt(cell.dataset.r), c = parseInt(cell.dataset.c);
+                    cellClick(r, c);
+                });
+            });
+
+            buildClues();
+            updHnt();
+            if (cur) hl();
+        }
+
+        function setupMobileKeyboard() {
+            document.querySelectorAll('.key').forEach(key => {
+                key.addEventListener('click', e => {
+                    e.preventDefault();
+                    const k = key.dataset.key;
+                    if (!cur) return;
+                    
+                    if (k === 'DEL') {
+                        if (user[cur.r][cur.c] && !isLocked(cur.r, cur.c)) setLetter(cur.r, cur.c, '');
+                        else { prevUnlocked(); if (cur && !isLocked(cur.r, cur.c)) setLetter(cur.r, cur.c, ''); }
+                    } else if (k === 'DIR') {
+                        togDir();
+                    } else if (k === 'ENTER') {
+                        chk();
+                    } else if (!isLocked(cur.r, cur.c)) {
+                        setLetter(cur.r, cur.c, k);
+                        nextUnfilled();
+                    }
+                });
+            });
+        }
+
+        function buildClues() {
+            const ac = placed.filter(w => w.dir === 'across').sort((a, b) => a.num - b.num);
+            const dw = placed.filter(w => w.dir === 'down').sort((a, b) => a.num - b.num);
+            document.getElementById('acr').innerHTML = ac.map(w => `<div class="item" data-n="${w.num}" data-d="across" onclick="selClue(${w.row},${w.col},'across')"><span class="num">${w.num}.</span><span class="txt">${w.clue}</span><span class="kr ${krOn ? '' : 'hide'}">${w.kr}</span></div>`).join('');
+            document.getElementById('dwn').innerHTML = dw.map(w => `<div class="item" data-n="${w.num}" data-d="down" onclick="selClue(${w.row},${w.col},'down')"><span class="num">${w.num}.</span><span class="txt">${w.clue}</span><span class="kr ${krOn ? '' : 'hide'}">${w.kr}</span></div>`).join('');
+            if (desk) {
+                document.getElementById('da').innerHTML = ac.map(w => `<div class="item" data-n="${w.num}" data-d="across" onclick="selClue(${w.row},${w.col},'across')"><span class="num">${w.num}.</span><span class="txt">${w.clue}</span><span class="kr ${krOn ? '' : 'hide'}">${w.kr}</span></div>`).join('');
+                document.getElementById('dd').innerHTML = dw.map(w => `<div class="item" data-n="${w.num}" data-d="down" onclick="selClue(${w.row},${w.col},'down')"><span class="num">${w.num}.</span><span class="txt">${w.clue}</span><span class="kr ${krOn ? '' : 'hide'}">${w.kr}</span></div>`).join('');
+            }
+        }
+
+        function cellClick(r, c) {
+            if (!grid[r][c]) return;
+            if (cur && cur.r === r && cur.c === c) togDir();
+            else { cur = { r, c }; hl(); updClue(); }
+        }
+
+        function selClue(r, c, d) { dir = d; cur = { r, c }; hl(); updClue(); hidePanel(); }
+
+        // 어느 칸에서든 방향 전환 가능
+        function togDir() {
+            if (!cur) return;
+            dir = dir === 'across' ? 'down' : 'across';
+            hl(); updClue();
+            const b = document.querySelector('.dir-btn');
+            if (b) b.textContent = dir === 'across' ? '→ Across' : '↓ Down';
+        }
+
+        function setLetter(r, c, l) {
+            user[r][c] = l;
+            const e = document.getElementById(`l-${r}-${c}`);
+            if (e) e.textContent = l;
+        }
+
+        // 채워진 칸/잠긴 칸 스킵하며 다음 빈칸으로
+        function nextUnfilled() {
+            if (!cur) return;
+            let { r, c } = cur;
+            const cells = getWC(r, c);
+            let idx = cells.findIndex(cell => cell.r === r && cell.c === c);
+            
+            // 현재 단어에서 다음 빈칸 찾기
+            for (let i = idx + 1; i < cells.length; i++) {
+                const cell = cells[i];
+                if (!user[cell.r][cell.c] && !isLocked(cell.r, cell.c)) {
+                    cur = { r: cell.r, c: cell.c };
+                    hl();
+                    return;
+                }
+            }
+            
+            // 현재 단어 완성됨 -> 다음 단어로
+            nextWord();
+        }
+
+        function nextWord() {
+            const cw = getCurWord(); if (!cw) return;
+            const same = placed.filter(w => w.dir === dir).sort((a, b) => a.num - b.num);
+            const i = same.findIndex(w => w.num === cw.num);
+            const nw = same[i + 1] || same[0];
+            if (nw) { 
+                // 다음 단어의 첫 빈칸 찾기
+                const cells = [];
+                for (let j = 0; j < nw.word.length; j++) {
+                    if (nw.dir === 'across') cells.push({ r: nw.row, c: nw.col + j });
+                    else cells.push({ r: nw.row + j, c: nw.col });
+                }
+                for (const cell of cells) {
+                    if (!user[cell.r][cell.c] && !isLocked(cell.r, cell.c)) {
+                        cur = { r: cell.r, c: cell.c };
+                        hl(); updClue();
+                        return;
+                    }
+                }
+                // 다음 단어도 다 채워져있으면 첫 칸으로
+                cur = { r: nw.row, c: nw.col };
+                hl(); updClue();
+            }
+        }
+
+        function prevUnlocked() {
+            if (!cur) return;
+            let { r, c } = cur;
+            const cells = getWC(r, c);
+            let idx = cells.findIndex(cell => cell.r === r && cell.c === c);
+            
+            for (let i = idx - 1; i >= 0; i--) {
+                const cell = cells[i];
+                if (!isLocked(cell.r, cell.c)) {
+                    cur = { r: cell.r, c: cell.c };
+                    hl();
+                    return;
+                }
+            }
+        }
+
+        function moveBy(dr, dc) {
+            if (!cur) return;
+            let r = cur.r + dr, c = cur.c + dc;
+            if (r >= 0 && r < SIZE && c >= 0 && c < SIZE && grid[r][c]) { cur = { r, c }; hl(); updClue(); }
+        }
+
+        function hl() {
+            document.querySelectorAll('.cell').forEach(e => { e.classList.remove('sel', 'hl'); });
+            if (!cur) return;
+            const cells = getWC(cur.r, cur.c);
+            cells.forEach(({ r, c }) => {
+                const e = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+                if (e && !isLocked(r, c)) e.classList.add('hl');
+            });
+            const s = document.querySelector(`.cell[data-r="${cur.r}"][data-c="${cur.c}"]`);
+            if (s) { s.classList.remove('hl'); s.classList.add('sel'); }
+            document.querySelectorAll('.item').forEach(e => e.classList.remove('act'));
+            const w = getCurWord();
+            if (w) document.querySelectorAll(`.item[data-n="${w.num}"][data-d="${dir}"]`).forEach(e => e.classList.add('act'));
+        }
+
+        function getWC(r, c) {
+            const cells = [];
+            if (dir === 'across') {
+                let sc = c; while (sc > 0 && grid[r][sc - 1]) sc--;
+                let ec = c; while (ec < SIZE - 1 && grid[r][ec + 1]) ec++;
+                for (let x = sc; x <= ec; x++) cells.push({ r, c: x });
+            } else {
+                let sr = r; while (sr > 0 && grid[sr - 1][c]) sr--;
+                let er = r; while (er < SIZE - 1 && grid[er + 1][c]) er++;
+                for (let y = sr; y <= er; y++) cells.push({ r: y, c });
+            }
+            return cells;
+        }
+
+        function getCurWord() {
+            if (!cur) return null;
+            return placed.find(w => {
+                if (w.dir !== dir) return false;
+                if (dir === 'across') return w.row === cur.r && cur.c >= w.col && cur.c < w.col + w.word.length;
+                return w.col === cur.c && cur.r >= w.row && cur.r < w.row + w.word.length;
+            });
+        }
+
+        function updClue() {
+            const w = getCurWord();
+            const ne = document.getElementById('cn'), te = document.getElementById('ct'), ke = document.getElementById('ck');
+            if (w && ne && te) { ne.textContent = `${w.num} ${dir.toUpperCase()}`; te.textContent = w.clue; if (ke) ke.textContent = w.kr; }
+        }
+
+        function hint() {
+            if (hnt <= 0) return;
+            const emp = [];
+            for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) 
+                if (grid[r][c] && !user[r][c] && !isLocked(r, c)) emp.push({ r, c });
+            if (!emp.length) { toast('All filled!'); return; }
+            const { r, c } = emp[Math.floor(Math.random() * emp.length)];
+            user[r][c] = grid[r][c];
+            locked.push({ r, c });
+            const e = document.getElementById(`l-${r}-${c}`);
+            const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+            if (e) e.textContent = grid[r][c];
+            if (cell) { cell.classList.add('locked', 'ok'); }
+            hnt--; updHnt(); toast(`💡 ${hnt} left`);
+        }
+
+        function updHnt() {
+            document.getElementById('hints').textContent = hnt;
+            const b = document.getElementById('hb'); if (b) b.disabled = hnt <= 0;
+        }
+
+        function chk() {
+            let ok = 0, tot = 0, newLocked = 0;
+            for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (grid[r][c]) {
+                tot++;
+                const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+                if (isLocked(r, c)) { ok++; continue; }
+                cell.classList.remove('ok', 'err');
+                if (user[r][c].toUpperCase() === grid[r][c]) {
+                    ok++;
+                    cell.classList.add('ok', 'locked');
+                    if (!isLocked(r, c)) {
+                        locked.push({ r, c });
+                        newLocked++;
+                    }
+                } else if (user[r][c]) {
+                    cell.classList.add('err');
+                }
+            }
+            if (ok === tot) { stopTmr(); toast('🎉 Perfect! Next...', true); setTimeout(gen, 2500); }
+            else if (newLocked > 0) toast(`✓ ${newLocked} locked! ${ok}/${tot}`);
+            else toast(`${ok}/${tot} correct`);
+        }
+
+        function rev() {
+            if (!cur) { toast('Select a cell'); return; }
+            getWC(cur.r, cur.c).forEach(({ r, c }) => {
+                if (isLocked(r, c)) return;
+                user[r][c] = grid[r][c];
+                locked.push({ r, c });
+                const e = document.getElementById(`l-${r}-${c}`);
+                const cell = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+                if (e) e.textContent = grid[r][c];
+                if (cell) cell.classList.add('ok', 'locked');
+            });
+        }
+
+        function showPanel() { document.getElementById('ov').classList.add('on'); document.getElementById('pn').classList.add('on'); }
+        function hidePanel() { document.getElementById('ov').classList.remove('on'); document.getElementById('pn').classList.remove('on'); }
+
+        function toggleKr() {
+            krOn = !krOn;
+            document.getElementById('tgl').classList.toggle('on', krOn);
+            document.querySelectorAll('.kr').forEach(e => e.classList.toggle('hide', !krOn));
+            document.querySelectorAll('.clue-kr').forEach(e => e.classList.toggle('on', krOn));
+        }
+
+        function togKrQ() {
+            krOn = !krOn;
+            document.querySelectorAll('.toggle').forEach(t => t.classList.toggle('on', krOn));
+            document.querySelectorAll('.kr').forEach(e => e.classList.toggle('hide', !krOn));
+            document.querySelectorAll('.clue-kr').forEach(e => e.classList.toggle('on', krOn));
+            const b = document.getElementById('kb-btn'); if (b) b.classList.toggle('on', krOn);
+            toast(krOn ? '한글 ON' : '한글 OFF');
+        }
+
+        function toast(msg, ok = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast on' + (ok ? ' ok' : '');
+            setTimeout(() => t.classList.remove('on'), 2500);
+        }
+
+        function startTmr() { if (tmr) clearInterval(tmr); tmr = setInterval(() => { sec++; updTmr(); }, 1000); }
+        function stopTmr() { clearInterval(tmr); }
+        function updTmr() {
+            const m = String(Math.floor(sec / 60)).padStart(2, '0'), s = String(sec % 60).padStart(2, '0');
+            document.getElementById('time').textContent = `${m}:${s}`;
+        }
+
+        init();
+    </script>
+</body>
+</html>
