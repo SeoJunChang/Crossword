@@ -1247,7 +1247,7 @@ var WORDS = [
 	{ word: "ATTACK", clue: "Take aggressive action against.", kr: "~에 대해 공격적인 행동을 취하다", hint2: "공격: 습격하거나 치는 행위", hint3: "ATTACK" },
 	{ word: "AUTUMN", clue: "The season between summer and winter.", kr: "여름과 겨울 사이의 계절", hint2: "가을: 선선한 계절", hint3: "AUTUMN" },
 	{ word: "BASKET", clue: "A container made of interwoven cane.", kr: "엮은 갈대로 만든 용기", hint2: "바구니: 물건을 담는 바구니", hint3: "BASKET" },
-	{ word: "BEAUTY", clue: "A combination of qualities that pleases.", kr: "기쁘게 하는 자질들의 조합", hint2: "아름다움: 예쁘고 고운 모습", hint3: "BEAUTY" },
+	{ word: "BEAUTY", clue: "A combination of qualities that pleases.", kr: "시각적 즐거움을 주는 성질이나 외모", hint2: "아름다움: 예쁘고 고운 모습", hint3: "BEAUTY" },
 	{ word: "BEFORE", clue: "During the period of time preceding.", kr: "앞선 시간의 기간 동안", hint2: "~전: 시간상으로 앞선 때", hint3: "BEFORE" },
 	{ word: "BEHIND", clue: "At or to the far side of something.", kr: "어떤 것의 먼 쪽이나 그 위치에", hint2: "뒤에: 앞의 반대 방향", hint3: "BEHIND" },
 	{ word: "BELIEVE", clue: "Accept that something is true.", kr: "무언가가 사실임을 받아들이다", hint2: "믿다: 확실하다고 여기다", hint3: "BELIEVE" },
