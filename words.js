@@ -48,15 +48,15 @@ var WORDS = [
   },
   {
 	word: "PEN",
-	clue: "An instrument for writing or drawing with ink.",
-	kr: "잉크로 글씨를 쓰거나 그림을 그리는 도구",
+	clue: "An instrument for writing or drawing.",
+	kr: "글씨를 쓰거나 그림을 그리는 도구",
 	hint2: "펜: 필기구의 일종",
 	hint3: "PEN"
   },
   {
 	word: "CUP",
 	clue: "A small, bowl-shaped container for drinking.",
-	kr: "마시기 위한 작은 그릇 모양의 용기",
+	kr: "액체를 마시기 위한 작은 그릇, 용기",
 	hint2: "컵: 물이나 차를 담아 마시는 그릇",
 	hint3: "CUP"
   },
@@ -70,7 +70,7 @@ var WORDS = [
   {
 	word: "MAP",
 	clue: "A drawing of a particular area on a flat surface.",
-	kr: "평평한 면에 그린 특정 지역의 그림",
+	kr: "어떤 혹은 전체 땅(지역)을 그린 평평한 면",
 	hint2: "지도: 지구 표면을 줄여 그린 그림",
 	hint3: "MAP"
   },
