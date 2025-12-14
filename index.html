@@ -163,10 +163,21 @@ let desk=window.innerWidth>=768;
 let hint2Shown={},revealedWords={},wordScored={};
 let gameOver=false,timePenaltyStarted=false;
 
-const SCORE={letterCorrect:1,letterWrong:-1,wordComplete:2,puzzleClear:10,hintEasy:8,hintRandom:15,hintAnswer:40,skipPenalty:20};
-const TIME_PENALTY_START=180; // 3분 = 180초
+// 게임 스코어 설정 --
+const SCORE={
+    letterCorrect:5,
+    letterWrong:-5,
+    wordComplete:10,
+    puzzleClear:50,
+    hintEasy:10,
+    hintRandom:20,
+    hintAnswer:50,
+    skipPenalty:80
+};
+const TIME_PENALTY_START=300; // 3분 = 180초, 5분 = 300 10분 = 600
 const TIME_PENALTY_INTERVAL=10; // 10초마다
-const TIME_PENALTY_AMOUNT=1; // -1점
+const TIME_PENALTY_AMOUNT=5; // - 5점
+// 스코어 설정 끝 --
 
 function init(){
     loadBestRecord();
@@ -309,6 +320,12 @@ function gen(){
     showLoad();
     hint2Shown={};revealedWords={};wordScored={};
     timePenaltyStarted=false;
+    // --- 여기에 추가 ---
+    const timeEl = document.getElementById('time');
+    if (timeEl) {
+        timeEl.classList.remove('time-warn'); // 빨간색 경고 클래스 제거
+    }
+    // ------------------
     setTimeout(()=>{
         let best=null,bp=[];
         for(let i=0;i<5;i++){const r=mkGrid();if(r.p.length>bp.length){best=r.g;bp=r.p}}
@@ -384,7 +401,7 @@ function render(){
         const bl=!grid[r][c],n=nm[r+'-'+c],lk=isLocked(r,c);
         gh+='<div class="cell '+(bl?'black ':' ')+(lk?'locked ok':'')+'" data-r="'+r+'" data-c="'+c+'" style="width:'+cs+'px;height:'+cs+'px">'+(n?'<span class="n">'+n+'</span>':'')+(!bl?'<span class="l" id="l-'+r+'-'+c+'">'+user[r][c]+'</span>':'')+'</div>'
     }
-    const html='<div class="game"><div class="clue-box"><div class="clue-head"><span class="clue-num" id="cn">Select a cell</span><button class="dir-btn" onclick="togDir()">'+(dir==='across'?'→ Across':'↓ Down')+'</button></div><div class="clue-text" id="ct"></div><div class="clue-kr '+(krOn?'on':'')+'" id="ck"></div><div class="clue-hint2" id="ch2"></div></div><div class="grid-wrap"><div class="grid" id="grid" style="grid-template-columns:repeat('+SIZE+','+cs+'px)">'+gh+'</div></div><div class="controls"><button class="btn pri" onclick="restartGame()">New</button><button class="btn" onclick="skipRound()">Next<span class="cost">-'+SCORE.skipPenalty+'</span></button><button class="btn" onclick="useHint2()" id="hint2Btn">💡<span class="cost">-'+SCORE.hintEasy+'</span></button><button class="btn" onclick="useHint1()" id="hint1Btn">🔀<span class="cost">-'+SCORE.hintRandom+'</span></button><button class="btn" onclick="useHint3()" id="hint3Btn">🔓<span class="cost">-'+SCORE.hintAnswer+'</span></button><button class="btn" onclick="chk()">Check</button><button class="btn '+(krOn?'on':'')+'" onclick="togKrQ()" id="kb-btn">🇰🇷</button><button class="btn mob" onclick="showPanel()">Clues</button></div></div>'+(desk?'<div class="desk-clues"><div class="setting"><span>한글 힌트</span><div class="toggle '+(krOn?'on':'')+'" onclick="togKrQ()"></div></div><h3>Across →</h3><div class="list" id="da"></div><h3>Down ↓</h3><div class="list" id="dd"></div></div>':'');
+    const html='<div class="game"><div class="clue-box"><div class="clue-head"><span class="clue-num" id="cn">Select a cell</span><button class="dir-btn" onclick="togDir()">'+(dir==='across'?'→ Across':'↓ Down')+'</button></div><div class="clue-text" id="ct"></div><div class="clue-kr '+(krOn?'on':'')+'" id="ck"></div><div class="clue-hint2" id="ch2"></div></div><div class="grid-wrap"><div class="grid" id="grid" style="grid-template-columns:repeat('+SIZE+','+cs+'px)">'+gh+'</div></div><div class="controls"><button class="btn pri" onclick="restartGame()">New<br>Game</button><button class="btn" onclick="skipRound()">Next<span class="cost">-'+SCORE.skipPenalty+'</span></button><button class="btn" onclick="useHint2()" id="hint2Btn">💡<span class="cost">-'+SCORE.hintEasy+'</span></button><button class="btn" onclick="useHint1()" id="hint1Btn">🔀<span class="cost">-'+SCORE.hintRandom+'</span></button><button class="btn" onclick="useHint3()" id="hint3Btn">🔓<span class="cost">-'+SCORE.hintAnswer+'</span></button><button class="btn" onclick="chk()">Check</button><button class="btn '+(krOn?'on':'')+'" onclick="togKrQ()" id="kb-btn">KOR</button><button class="btn mob" onclick="showPanel()">Clues</button></div></div>'+(desk?'<div class="desk-clues"><div class="setting"><span>한글 힌트</span><div class="toggle '+(krOn?'on':'')+'" onclick="togKrQ()"></div></div><h3>Across →</h3><div class="list" id="da"></div><h3>Down ↓</h3><div class="list" id="dd"></div></div>':'');
     document.getElementById('main').innerHTML=html;
     if(!desk){
         const kbHtml='<div class="keyboard"><div class="kb-row">'+['Q','W','E','R','T','Y','U','I','O','P'].map(k=>'<button class="key" data-key="'+k+'">'+k+'</button>').join('')+'</div><div class="kb-row">'+['A','S','D','F','G','H','J','K','L'].map(k=>'<button class="key" data-key="'+k+'">'+k+'</button>').join('')+'</div><div class="kb-row"><button class="key wide" data-key="DIR">↔️</button>'+['Z','X','C','V','B','N','M'].map(k=>'<button class="key" data-key="'+k+'">'+k+'</button>').join('')+'<button class="key wide" data-key="DEL">⌫</button></div><div class="kb-row"><button class="key wide" data-key="ENTER">CHECK ✓</button></div></div>';
